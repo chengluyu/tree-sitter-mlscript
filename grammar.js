@@ -63,6 +63,8 @@ const PREC = {
   APP: 37, // Parser.AppPrec
   SEL: 38, // Parser.SelPrec, and the right precedence of `new`
   HASH: 39, // Keyword.hashSelPrec, and the left precedence of `=>`
+  // The left precedence of `\` (`Keyword.backslash`): that of selection.
+  BACKSLASH: 38,
 };
 
 // `symbolicIdentifierChars` from hkmc2/package.scala, plus `.` -- together they
@@ -80,8 +82,8 @@ const SYM_CHARS = '!#%&*+\\-/:<=>?@\\\\^|~.';
  * operator `--` juxtaposed with `x`. */
 function operatorRules() {
   const rules = {};
-  for (const [key, , first] of OPERATOR_TIERS) {
-    rules['_op_' + key + '_one'] = _ => new RegExp('[' + first + ']');
+  for (const [key, , first, one] of OPERATOR_TIERS) {
+    rules['_op_' + key + '_one'] = _ => new RegExp('[' + (one ?? first) + ']');
     rules['_op_' + key + '_many'] = _ => new RegExp('[' + first + '][' + SYM_CHARS + ']+');
   }
   return rules;
@@ -120,7 +122,8 @@ function quotedOperatorToken(first) {
   return new RegExp('`[' + first + '][' + SYM_CHARS + ']*');
 }
 
-// Character-operator tiers, keyed on the first character. Note that `=`, `:`,
+// Character-operator tiers, keyed on the first character. An optional fourth
+// element narrows the first characters of the tier's one-character token. Note that `=`, `:`,
 // `|`, `&`, `#`, `->`, `=>`, `..` and `...` are *keywords* rather than
 // operators (they are registered in `Keyword.all`, so `Parser.OP` rejects
 // them); they are written as string literals below, which tree-sitter prefers
@@ -138,7 +141,10 @@ const OPERATOR_TIERS = [
   ['add', PREC.OP_ADD, '+\\-'],
   ['mul', PREC.OP_MUL, '*/%'],
   ['tilde', PREC.OP_TILDE, '~'],
-  ['dot', PREC.SEL, '.\\\\'],
+  // A lone `\` is `Keyword.backslash` rather than an operator, so the
+  // one-character token of this tier is `.` alone; longer runs such as `\\`
+  // stay operators.
+  ['dot', PREC.SEL, '.\\\\', '.'],
   // `?` and `#` are absent from `charPrecList`, so `Parser.precOf` falls back to
   // `Int.MaxValue` for them: tighter than every listed operator. (Bare `#` is a
   // keyword and is written as a literal elsewhere; a longer operator such as
@@ -273,8 +279,12 @@ export default grammar({
       //       true
       //       and
       //       true do print("ok")
+      //
+      // `\` and `=` qualify too, the latter for a definition whose `=` starts
+      // the next line (`let x` / `= 1`); the branch is then a sibling of the
+      // binding rather than its body.
       seq(
-        field('operator', choice(...INFIX_KEYWORDS.map(([op]) => op))),
+        field('operator', choice(...INFIX_KEYWORDS.map(([op]) => op), '\\', '=')),
         repeat($._newline),
         field('right', operand($)),
       ),
@@ -570,8 +580,12 @@ export default grammar({
     // right-associative operator at the `=>` right precedence, which agrees with
     // the reference on everything except pathological mixtures such as
     // `a + x => b`.
+    //
+    // The parameters may be left out (`Keyword.Prefix` includes `=>`): `=> e`
+    // is a lambda whose parameters are the `_` placeholders of its body, as in
+    // `xs.map(=> _ + 1)` or `=> { x: _, y: _ }`.
     lambda: $ => prec.right(PREC.LAM_RHS, seq(
-      field('parameters', $._expression),
+      optional(field('parameters', $._expression)),
       '=>',
       repeat($._newline),
       field('body', operand($)),
@@ -604,6 +618,23 @@ export default grammar({
           repeat($._newline),
           field('right', operand($)),
         ))),
+      // `f \ a` means `f(a)` and `f(x) \ a` means `f(x, a)`
+      // (`Keyword.backslash`). The keyword binds as tightly as selection on
+      // the left but as loosely as a lambda body on the right, so
+      // `xs |> f \ a + 1` is `xs |> f(a + 1)` and `f \ g \ a` is `f(g(a))`.
+      // Unlike `=>`, the asymmetry is expressed exactly: tree-sitter resolves
+      // the shift of `\` with the precedence of the step before it (the left
+      // operand), and the reduction of the whole application with that of its
+      // last step. The inner `prec` must cover the operator too, because
+      // leaving a `prec` resets its last step to the enclosing precedence.
+      prec.right(PREC.LAM_RHS, seq(
+        prec(PREC.BACKSLASH, seq(
+          field('left', $._expression),
+          field('operator', '\\'),
+        )),
+        repeat($._newline),
+        field('right', operand($)),
+      )),
       prec.left(PREC.HASH, seq(
         field('left', $._expression),
         field('operator', '#'),

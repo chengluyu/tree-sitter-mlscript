@@ -300,3 +300,220 @@ print of
       (block
         (integer_literal)
         (integer_literal)))))
+
+==================
+Parameterless lambda
+==================
+
+xs.map(=> _ + 1)
+
+---
+
+(source_file
+  (application
+    (selection
+      (identifier)
+      (identifier))
+    (arguments
+      (lambda
+        (infix_application
+          (wildcard)
+          (operator)
+          (integer_literal))))))
+
+==================
+Parameterless lambda with a record body
+==================
+
+let p = => { x: _, y: _ }
+
+---
+
+(source_file
+  (let_binding
+    (identifier)
+    (lambda
+      (record
+        (infix_application
+          (identifier)
+          (wildcard))
+        (infix_application
+          (identifier)
+          (wildcard))))))
+
+==================
+Parameterless lambda with an indented body
+==================
+
+let f = =>
+  _ * 2
+
+---
+
+(source_file
+  (let_binding
+    (identifier)
+    (lambda
+      (block
+        (infix_application
+          (wildcard)
+          (operator)
+          (integer_literal))))))
+
+==================
+Parameterless lambda as an argument of of
+==================
+
+f of => _ is Letter
+
+---
+
+(source_file
+  (of_application
+    (identifier)
+    (of_arguments
+      (lambda
+        (infix_application
+          (wildcard)
+          (identifier))))))
+
+==================
+Keyword operator as a name next to a parameterless lambda
+==================
+
+fun (=>) f(a, b) = a
+(=> 1)
+
+---
+
+(source_file
+  (fun_definition
+    (application
+      (juxtaposition
+        (parenthesized_expression
+          (operator_identifier))
+        (identifier))
+      (arguments
+        (identifier)
+        (identifier)))
+    (identifier))
+  (parenthesized_expression
+    (lambda
+      (integer_literal))))
+
+==================
+Backslash application is right-associative
+==================
+
+print \ id \ 0
+
+---
+
+(source_file
+  (infix_application
+    (identifier)
+    (infix_application
+      (identifier)
+      (integer_literal))))
+
+==================
+Backslash application binds tightly on the left and loosely on the right
+==================
+
+xs |> f \ a + 1
+1 + inc \ 1
+
+---
+
+(source_file
+  (infix_application
+    (identifier)
+    (operator)
+    (infix_application
+      (identifier)
+      (infix_application
+        (identifier)
+        (operator)
+        (integer_literal))))
+  (infix_application
+    (integer_literal)
+    (operator)
+    (infix_application
+      (identifier)
+      (integer_literal))))
+
+==================
+Backslash application after a call
+==================
+
+add(1) \ 2
+inc()\1
+
+---
+
+(source_file
+  (infix_application
+    (application
+      (identifier)
+      (arguments
+        (integer_literal)))
+    (integer_literal))
+  (infix_application
+    (application
+      (identifier)
+      (arguments))
+    (integer_literal)))
+
+==================
+Backslash application with a lambda argument
+==================
+
+[1, 2, 3].map \ (x, ...) => x + 1
+
+---
+
+(source_file
+  (infix_application
+    (selection
+      (tuple
+        (integer_literal)
+        (integer_literal)
+        (integer_literal))
+      (identifier))
+    (lambda
+      (parenthesized_expression
+        (identifier)
+        (suspension))
+      (infix_application
+        (identifier)
+        (operator)
+        (integer_literal)))))
+
+==================
+Backslash application continued on the next lines
+==================
+
+tuple(1) \ 2
+\ 3
+f
+  \ a
+  \ b
+
+---
+
+(source_file
+  (infix_application
+    (application
+      (identifier)
+      (arguments
+        (integer_literal)))
+    (integer_literal))
+  (split_branch
+    (integer_literal))
+  (juxtaposed_block
+    (identifier)
+    (block
+      (split_branch
+        (identifier))
+      (split_branch
+        (identifier)))))

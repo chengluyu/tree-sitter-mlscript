@@ -866,6 +866,10 @@
             "named": false
           },
           {
+            "type": "\\",
+            "named": false
+          },
+          {
             "type": "and",
             "named": false
           },
@@ -1031,7 +1035,7 @@
       },
       "parameters": {
         "multiple": false,
-        "required": true,
+        "required": false,
         "types": [
           {
             "type": "_expression",
@@ -2018,6 +2022,14 @@
             "named": false
           },
           {
+            "type": "=",
+            "named": false
+          },
+          {
+            "type": "\\",
+            "named": false
+          },
+          {
             "type": "and",
             "named": false
           },
@@ -2461,6 +2473,10 @@
   },
   {
     "type": "[",
+    "named": false
+  },
+  {
+    "type": "\\",
     "named": false
   },
   {

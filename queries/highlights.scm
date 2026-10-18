@@ -106,6 +106,7 @@
   "="
   "=>"
   "->"
+  "\\"
   "|"
   "&"
   ":"
@@ -188,6 +189,14 @@
 (application function: (identifier) @function.call)
 (application function: (selection field: (identifier) @function.call))
 (of_application function: (identifier) @function.call)
+
+; `f \ a` applies `f` to `a` (and `f(x) \ a` adds `a` to the arguments).
+(infix_application
+  left: (identifier) @function.call
+  operator: "\\")
+(infix_application
+  left: (selection field: (identifier) @function.call)
+  operator: "\\")
 
 (selection field: (identifier) @variable.member)
 

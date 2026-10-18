@@ -172,3 +172,34 @@ pattern Digit = '0' | '1'
     (infix_application
       (identifier)
       (identifier))))
+
+==================
+Definition with the equals sign on the next line
+==================
+
+let x
+= 1
+
+---
+
+(source_file
+  (let_binding
+    (identifier))
+  (split_branch
+    (integer_literal)))
+
+==================
+Unfinished binding does not swallow the next statement
+==================
+
+let
+
+let y = 1
+
+---
+
+(source_file
+  (ERROR)
+  (let_binding
+    (identifier)
+    (integer_literal)))

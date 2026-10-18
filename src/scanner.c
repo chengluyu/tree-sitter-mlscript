@@ -122,7 +122,28 @@ bool tree_sitter_mlscript_external_scanner_scan(void *payload, TSLexer *lexer,
 
   // In error recovery tree-sitter marks every token valid, including the
   // sentinel. Producing zero-width tokens there only compounds the damage.
-  if (valid_symbols[ERROR_SENTINEL]) return false;
+  //
+  // A line break is the exception: the internal lexer cannot match `\n` (it
+  // is not an extra), so without a NEWLINE here every line break inside the
+  // error is an error of its own, and an unfinished `let` or `handle` at the
+  // end of a diff-test block swallows the blocks after it. Consuming the run as
+  // a NEWLINE gives recovery a statement boundary to resynchronise on. The
+  // indentation stack is left alone; the next real token sorts it out.
+  if (valid_symbols[ERROR_SENTINEL]) {
+    bool found_newline = false;
+    while (lexer->lookahead == '\n' || lexer->lookahead == ' ' ||
+           lexer->lookahead == '\t' || lexer->lookahead == '\r') {
+      if (lexer->lookahead == '\n') found_newline = true;
+      lexer->advance(lexer, true);
+    }
+    if (found_newline && !lexer->eof(lexer) &&
+        lexer->get_column(lexer) <= top_indent(scanner)) {
+      lexer->mark_end(lexer);
+      lexer->result_symbol = NEWLINE;
+      return true;
+    }
+    return false;
+  }
 
   // Diff-test directive lines such as `:todo` or `:expect 1`. The test harness
   // in `hkmc2DiffTests/.../DiffMaker.scala` consumes any line starting with `:`
