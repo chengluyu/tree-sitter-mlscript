@@ -141,3 +141,21 @@ Two things to know about regenerating:
   puts declarations and bindings wherever an expression can go, so most operand
   positions reach the whole statement grammar. `generate` takes a couple of
   minutes and the resulting `src/parser.c` is tens of megabytes.
+
+## npm package
+
+The grammar is published to npm as `@mlscript/tree-sitter-mlscript`. Besides the
+grammar sources and Node bindings (with prebuilt binaries for linux-x64,
+linux-arm64, darwin-arm64, darwin-x64 and win32-x64), the package contains
+`tree-sitter-mlscript.wasm` and `queries/`, so browser users of
+`web-tree-sitter` can load them directly. Both are exported subpaths:
+
+```
+@mlscript/tree-sitter-mlscript/tree-sitter-mlscript.wasm
+@mlscript/tree-sitter-mlscript/queries/highlights.scm
+```
+
+To release, bump the version (`npx tree-sitter version X.Y.Z` updates
+`package.json`, `tree-sitter.json` and the other manifests), commit, and push a
+tag `vX.Y.Z`. The `Publish to npm` workflow (`.github/workflows/publish.yml`)
+builds the Wasm and native binaries and publishes with npm trusted publishing.

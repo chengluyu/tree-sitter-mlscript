@@ -1,0 +1,124 @@
+name: Publish to npm
+
+# Releases are cut by pushing a tag `vX.Y.Z` whose version matches package.json.
+# Authentication uses npm trusted publishing (OIDC); no npm token secret is needed.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  check_version:
+    name: Check tag matches package version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Compare tag with package.json and tree-sitter.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(jq -r .version package.json)"
+          ts="$(jq -r .metadata.version tree-sitter.json)"
+          echo "tag=$tag package.json=$pkg tree-sitter.json=$ts"
+          if [ "$tag" != "$pkg" ] || [ "$tag" != "$ts" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json ($pkg) / tree-sitter.json ($ts)"
+            exit 1
+          fi
+
+  build_wasm:
+    name: Build Wasm
+    needs: check_version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install tree-sitter-cli
+        # Skip the root install script (native build); only the CLI's download script is needed.
+        run: |
+          npm install --ignore-scripts --omit peer --omit optional
+          npm rebuild tree-sitter-cli
+      - name: Build Wasm
+        run: npx tree-sitter build --wasm
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wasm
+          path: tree-sitter-mlscript.wasm
+          if-no-files-found: error
+          retention-days: 2
+
+  build_node:
+    name: Prebuild Node binding (${{ matrix.os }})
+    needs: check_version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-22.04        # linux-x64 (older glibc for wider compatibility)
+          - ubuntu-22.04-arm    # linux-arm64
+          - macos-15            # darwin-arm64
+          - macos-15-intel      # darwin-x64
+          - windows-2022        # win32-x64
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Install dependencies
+        run: npm install --ignore-scripts --omit peer --omit optional
+      - name: Prebuild (Node-API)
+        run: |
+          npm run prebuildify
+          # prebuildify names the file after the scoped package name; use the
+          # name bindings/node/index.js expects for Bun.
+          for f in prebuilds/*/*.node; do
+            mv -v "$f" "$(dirname "$f")/tree-sitter-mlscript.node"
+          done
+      - name: Test binding
+        run: rm -rf build && npm test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: prebuilds-${{ matrix.os }}
+          path: prebuilds/**
+          if-no-files-found: error
+          retention-days: 2
+
+  publish:
+    name: Publish
+    needs: [build_wasm, build_node]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Ensure npm supports trusted publishing (>= 11.5.1)
+        run: npm install -g npm@^11.5.1 && npm --version
+      - uses: actions/download-artifact@v8
+        with:
+          name: wasm
+      - uses: actions/download-artifact@v8
+        with:
+          path: prebuilds
+          pattern: prebuilds-*
+          merge-multiple: true
+      - name: Check artifacts
+        run: |
+          ls -l tree-sitter-mlscript.wasm
+          for p in linux-x64 linux-arm64 darwin-arm64 darwin-x64 win32-x64; do
+            ls -l "prebuilds/$p/tree-sitter-mlscript.node"
+          done
+          npm pack --dry-run
+      - name: Publish
+        run: npm publish --provenance --access public

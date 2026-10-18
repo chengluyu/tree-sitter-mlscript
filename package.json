@@ -1,11 +1,11 @@
 {
-  "name": "tree-sitter-mlscript",
+  "name": "@mlscript/tree-sitter-mlscript",
   "version": "0.1.0",
   "description": "Mlscript grammar for tree-sitter",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/derppening/tree-sitter-mlscript.git"
+    "url": "git+https://github.com/Derppening/tree-sitter-mlscript.git"
   },
   "funding": "",
   "license": "MIT",
@@ -16,6 +16,18 @@
   },
   "main": "bindings/node",
   "types": "bindings/node",
+  "exports": {
+    ".": {
+      "types": "./bindings/node/index.d.ts",
+      "default": "./bindings/node/index.js"
+    },
+    "./tree-sitter-mlscript.wasm": "./tree-sitter-mlscript.wasm",
+    "./queries/*": "./queries/*",
+    "./tree-sitter.json": "./tree-sitter.json",
+    "./grammar.js": "./grammar.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
   "keywords": [
     "incremental",
     "parsing",
@@ -28,9 +40,10 @@
     "binding.gyp",
     "prebuilds/**",
     "bindings/node/*",
+    "!bindings/node/*_test.js",
     "queries/*",
     "src/**",
-    "*.wasm"
+    "tree-sitter-mlscript.wasm"
   ],
   "dependencies": {
     "node-addon-api": "^8.5.0",
@@ -53,6 +66,10 @@
     "install": "node-gyp-build",
     "prestart": "tree-sitter build --wasm",
     "start": "tree-sitter playground",
-    "test": "node --test bindings/node/*_test.js"
+    "test": "node --test bindings/node/*_test.js",
+    "prebuildify": "prebuildify --napi --strip"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
