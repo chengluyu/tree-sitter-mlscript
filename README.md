@@ -51,16 +51,18 @@ dynamic access, type-argument lists, annotations, puns, escaped `id"..."` names,
 quasiquotes, comments, and the diff-test scaffolding (`:flags` and `//│`
 output lines) that fills the compiler's test files.
 
-Measured with `script/parse-corpus.sh`:
+Measured with `script/parse-rate.mjs` (see `docs/hkmc2-parse-rate.md`):
 
 | Corpus | Files | Parse without errors |
 | --- | --- | --- |
-| `mlscript-compile/**` (real source) | 101 | 101 (100.0%) |
-| `shared/src/test/mlscript/**` (diff tests, unmodified) | 731 | 720 (98.5%) |
+| `mlscript-compile/**` (library and app sources) | 115 | 115 (100.0%) |
+| `mlscript/**` (diff tests, unmodified) | 952 | 941 (98.8%) |
+| **Total** | **1067** | **1056 (99.0%)** |
 
-Ten of the eleven remaining diff-test failures sit directly under an
-expect-parse-error marker (`:pe`, `:e`, `:fixme`) — they are the compiler's own
-tests for syntax it rejects too. The eleventh is the gap listed below.
+Nine of the eleven remaining failures sit directly under an expect-parse-error
+marker (`:pe`) or a block whose output reports a parse error. They are the
+compiler's own tests for syntax it rejects too. The other two are error
+recovery spilling out of such a block into the next one.
 
 ### Not yet supported
 
