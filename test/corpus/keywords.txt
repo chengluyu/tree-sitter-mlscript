@@ -147,6 +147,55 @@ let c = new Cls(1) with
           (integer_literal))))))
 
 ==================
+New with a constructor and a refinement body
+==================
+
+new C with { val x = 1 }
+
+new C with
+  val x = 1
+
+new A.B with
+  val x = 1
+
+new C(1) with
+  val x = 1
+
+---
+
+(source_file
+  (new_expression
+    constructor: (identifier)
+    body: (record
+      (val_definition
+        head: (identifier)
+        body: (integer_literal))))
+  (new_expression
+    constructor: (identifier)
+    body: (block
+      (val_definition
+        head: (identifier)
+        body: (integer_literal))))
+  (new_expression
+    constructor: (selection
+      object: (identifier)
+      field: (identifier))
+    body: (block
+      (val_definition
+        head: (identifier)
+        body: (integer_literal))))
+  (infix_application
+    left: (application
+      function: (new_expression
+        constructor: (identifier))
+      arguments: (arguments
+        (integer_literal)))
+    right: (block
+      (val_definition
+        head: (identifier)
+        body: (integer_literal)))))
+
+==================
 Modifier keywords are also usable as names
 ==================
 

@@ -563,17 +563,33 @@ export default grammar({
     case_expression: $ => prec.right(seq('case', field('branches', $._body))),
 
     // `Tree.LexicalNew`. `new` binds at `SelPrec`, so `new C(1)` is
-    // `(new C)(1)` and `new A.B` is `new (A.B)`.
-    new_expression: $ => prec.right(PREC.SEL, seq(
-      choice('new', 'new!'),
-      optional(field('constructor', $._expression)),
+    // `(new C)(1)` and `new A.B` is `new (A.B)`. `new C(1) with <block>` is
+    // thus an infix `with`, as in the reference, whose `Tree.desugared` folds
+    // it into the same `ProperNew` as `new C with <block>`.
+    new_expression: $ => choice(
+      prec.right(PREC.SEL, seq(
+        choice('new', 'new!'),
+        optional(field('constructor', $._expression)),
+      )),
       // `ParseRules`' `withRefinement`: `new with <block>` and
       // `new C with <block>` build a `LexicalNew` carrying a refinement body.
       // The body uses `operand` so that this `with` and the infix one draw on
-      // the same symbols; `new_expression`'s precedence then settles which of
-      // the two takes it.
-      optional(seq('with', field('body', operand($)))),
-    )),
+      // the same symbols.
+      prec.right(PREC.SEL, seq(
+        choice('new', 'new!'),
+        optional(field('constructor', $._new_constructor)),
+        'with',
+        field('body', operand($)),
+      )),
+    ),
+
+    // The constructor of a `new ... with`. After `new C`, the shift of `with`
+    // would be weighed against the infix `with` (`C with ...`, precedence
+    // `EXTENDS`) as well as against the reduction of a bare `new C`, and the
+    // lower infix precedence makes the reduction win. Reducing the constructor
+    // to this symbol first, at a precedence above that of `new_expression`,
+    // takes the infix item out of the state that shifts `with`.
+    _new_constructor: $ => prec(PREC.HASH, $._expression),
 
     // `x => e`. The reference gives `=>` a very tight left precedence and a very
     // loose right one; tree-sitter cannot express that asymmetry, so this is a
