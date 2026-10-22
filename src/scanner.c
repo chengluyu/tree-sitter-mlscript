@@ -128,7 +128,9 @@ bool tree_sitter_mlscript_external_scanner_scan(void *payload, TSLexer *lexer,
   // error is an error of its own, and an unfinished `let` or `handle` at the
   // end of a diff-test block swallows the blocks after it. Consuming the run as
   // a NEWLINE gives recovery a statement boundary to resynchronise on. The
-  // indentation stack is left alone; the next real token sorts it out.
+  // indentation stack is left alone; the next real token sorts it out. Note
+  // that this NEWLINE does not pop the stack even when the next line is
+  // dedented: no DEDENT is produced for the levels it closes.
   if (valid_symbols[ERROR_SENTINEL]) {
     bool found_newline = false;
     while (lexer->lookahead == '\n' || lexer->lookahead == ' ' ||

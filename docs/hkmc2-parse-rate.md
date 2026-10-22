@@ -1,9 +1,9 @@
 # Parse rate against the hkmc2 test corpus
 
-Measured on 2026-10-18 against every `.mls` file under
+Measured on 2026-10-22 against every `.mls` file under
 `hkmc2/shared/src/test/mlscript` and `hkmc2/shared/src/test/mlscript-compile`
-of hkust-taco/mlscript at `03027b727`, which includes PR #577 (underscore
-lambda shorthand and `\` trailing-argument application). A file is *clean* when
+of hkust-taco/mlscript at `d4752390f` (branch `hkmc2`), which includes PR #577
+(underscore lambda shorthand and `\` trailing-argument application). A file is *clean* when
 its tree has no ERROR or MISSING node.
 
 Reproduce with:

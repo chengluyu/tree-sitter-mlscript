@@ -66,10 +66,12 @@ recovery spilling out of such a block into the next one.
 
 ### Not yet supported
 
-* An `=` on the line after its binding head, as in `let x` / `= 1`. The
-  reference accepts this as a newline-operator continuation. Allowing a newline
-  there makes a binding head greedy across statement boundaries and costs far
-  more than it buys -- it took the diff-test corpus down twelve points.
+* An `=` on the line after its binding head, as in `let x` / `= 1`. This
+  parses without errors, but as a `let_binding` with no body followed by a
+  sibling `split_branch` for `= 1`, not as one binding. The reference accepts
+  it as a newline-operator continuation. Letting a binding head reach across
+  the newline makes it greedy across statement boundaries and costs far more
+  than it buys -- it took the diff-test corpus down twelve points.
 * A bare `lhs = rhs` on the right of an operator, as in `... then foo = 0`.
   Bindings introduced by `fun` / `val` / `let` / `set` do work there; `Def` does
   not, because it starts with an expression and putting it on that path
@@ -121,9 +123,11 @@ recovery spilling out of such a block into the next one.
   token rather than a `::` literal, because a literal would win the lexer's
   tie-break and stop `1 :: 2 :: Nil` from parsing. A projection is therefore also
   accepted after any other `:`-led operator.
-* `new C(1) with <block>` attaches the `with` as an ordinary infix application,
-  the same shape as `class C with <block>`; only the bare `new with <block>`
-  uses `new_expression`'s own body field.
+* `new C with <block>` and `new with <block>` are a `new_expression` with a
+  `body` field, but `new C(1) with <block>` is an ordinary infix `with` whose
+  left operand is `(new C)(1)`. This follows the reference parser, which also
+  reads `new C(1)` as `App(LexicalNew(C), (1))` and only folds the infix `with`
+  into the same `ProperNew` in `Tree.desugared`.
 
 ## Development
 
